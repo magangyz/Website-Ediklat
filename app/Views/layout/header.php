@@ -133,7 +133,13 @@ $appInfo = config('AppInfo');
                         <li><a class="dropdown-item" href="<?= base_url('master/laporan_eksternal') ?>">Laporan eksternal Karyawan</a></li>
                     </ul>
                 </li>
-
+                <?php if(session()->get('role') == 'admin'): ?>
+                <li class="nav-item">
+                    <a class="nav-link" href="<?= base_url('admin-user') ?>">
+                        <i class="bi bi-people"></i> Manajemen User
+                    </a>
+                </li>
+                <?php endif; ?>
             </ul>
         </div>
     </div>

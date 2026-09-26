@@ -26,22 +26,34 @@ class DiklatModel extends Model
     ];
 
 
-    public function getAll()
+    /**
+     * Optimized getAll - menggunakan JOIN statt subquery untuk COUNT dan SUM
+     */
+    public function getAll($limit = null, $offset = null)
     {
-        return $this->db->table('data_diklat d')
+        $builder = $this->db->table('data_diklat d')
             ->select('
                 d.*,
                 i.nama AS nama_instansi,
                 f.nama AS nama_fakultas,
                 k.nama AS nama_kegiatan,
-                (SELECT COUNT(*) FROM data_peserta_diklat WHERE diklat_id=d.id) AS peserta,
-                (SELECT IFNULL(SUM(subtotal),0) FROM data_biaya_diklat WHERE diklat_id=d.id) AS total_biaya
+                COUNT(DISTINCT p.id) AS peserta,
+                COALESCE(SUM(b.subtotal), 0) AS total_biaya
             ')
-            ->join('data_instansi i','i.id = d.instansi_id','left')
-            ->join('data_fakultas f','f.id = d.fakultas_id','left')
-            ->join('kegiatan k','k.id = d.kegiatan_id','left')
-            ->orderBy('d.id','DESC')
-            ->get()->getResultArray();
+            ->join('data_instansi i', 'i.id = d.instansi_id', 'left')
+            ->join('data_fakultas f', 'f.id = d.fakultas_id', 'left')
+            ->join('kegiatan k', 'k.id = d.kegiatan_id', 'left')
+            ->join('data_peserta_diklat p', 'p.diklat_id = d.id', 'left')
+            ->join('data_biaya_diklat b', 'b.diklat_id = d.id', 'left')
+            ->groupBy('d.id')
+            ->orderBy('d.id', 'DESC');
+
+        if ($limit !== null) {
+        $offset = $offset ?? 0;
+        return $builder->get((int)$limit, (int)$offset)->getResultArray();
+        }
+
+        return $builder->get()->getResultArray();
     }
 
     public function getDetail($id)
@@ -60,78 +72,100 @@ class DiklatModel extends Model
             ->get()->getRowArray();
     }
 
-    public function getFilteredQuery($filter)
-{
-    $builder = $this->db->table('data_diklat d')
-        ->select('
-            d.*,
-            i.nama AS nama_instansi,
-            f.nama AS nama_fakultas,
-            k.nama AS nama_kegiatan,
-            COUNT(p.id) AS peserta
-        ')
-        ->join('data_instansi i','i.id=d.instansi_id','left')
-        ->join('data_fakultas f','f.id=d.fakultas_id','left')
-        ->join('kegiatan k','k.id=d.kegiatan_id','left')
-        ->join('data_peserta_diklat p','p.diklat_id=d.id','left')
-        ->groupBy('d.id')
-        ->orderBy('d.id','DESC');
+    /**
+     * Optimized getFiltered - menggunakan LEFT JOIN statt subquery
+     */
+    public function getFiltered($filter, $limit = null, $offset = null)
+    {
+        $builder = $this->db->table('data_diklat d')
+            ->select('
+                d.*,
+                i.nama AS nama_instansi,
+                f.nama AS nama_fakultas,
+                k.nama AS nama_kegiatan,
+                COUNT(DISTINCT p.id) AS peserta,
+                COALESCE(SUM(b.subtotal), 0) AS total_biaya
+            ')
+            ->join('data_instansi i', 'i.id = d.instansi_id', 'left')
+            ->join('data_fakultas f', 'f.id = d.fakultas_id', 'left')
+            ->join('kegiatan k', 'k.id = d.kegiatan_id', 'left')
+            ->join('data_peserta_diklat p', 'p.diklat_id = d.id', 'left')
+            ->join('data_biaya_diklat b', 'b.diklat_id = d.id', 'left')
+            ->groupBy('d.id')
+            ->orderBy('d.id', 'DESC');
 
-    if (!empty($filter['instansi_id'])) {
-        $builder->where('d.instansi_id', $filter['instansi_id']);
+        if (!empty($filter['instansi_id'])) {
+            $builder->where('d.instansi_id', $filter['instansi_id']);
+        }
+
+        if (!empty($filter['fakultas_id'])) {
+            $builder->where('d.fakultas_id', $filter['fakultas_id']);
+        }
+
+        if (!empty($filter['kegiatan_id'])) {
+            $builder->where('d.kegiatan_id', $filter['kegiatan_id']);
+        }
+
+        if (!empty($filter['status_diklat']) && $filter['status_diklat'] != 'semua') {
+            $builder->where('d.status_diklat', $filter['status_diklat']);
+        }
+
+       if ($limit !== null) {
+        $offset = $offset ?? 0;
+        return $builder->get((int)$limit, (int)$offset)->getResultArray();
     }
 
-    if (!empty($filter['fakultas_id'])) {
-        $builder->where('d.fakultas_id', $filter['fakultas_id']);
+        return $builder->get()->getResultArray();
     }
 
-    if (!empty($filter['kegiatan_id'])) {
-        $builder->where('d.kegiatan_id', $filter['kegiatan_id']);
+    /**
+     * Hitung total records untuk pagination
+     */
+    public function countFiltered($filter)
+    {
+        $builder = $this->db->table('data_diklat d')
+            ->select('COUNT(DISTINCT d.id) as total')
+            ->join('data_instansi i', 'i.id = d.instansi_id', 'left')
+            ->join('data_fakultas f', 'f.id = d.fakultas_id', 'left');
+
+        if (!empty($filter['instansi_id'])) {
+            $builder->where('d.instansi_id', $filter['instansi_id']);
+        }
+
+        if (!empty($filter['fakultas_id'])) {
+            $builder->where('d.fakultas_id', $filter['fakultas_id']);
+        }
+
+        if (!empty($filter['kegiatan_id'])) {
+            $builder->where('d.kegiatan_id', $filter['kegiatan_id']);
+        }
+
+        if (!empty($filter['status_diklat']) && $filter['status_diklat'] != 'semua') {
+            $builder->where('d.status_diklat', $filter['status_diklat']);
+        }
+
+        return $builder->get()->getRowArray()['total'] ?? 0;
     }
 
-    if (!empty($filter['status_diklat']) && $filter['status_diklat'] != 'semua') {
-        $builder->where('d.status_diklat', $filter['status_diklat']);
+    /**
+     * Get data untuk dropdown/select options - dengan caching
+     */
+    public function getDropdownData($cacheMinutes = 30)
+    {
+        $cache = \Config\Services::cache();
+        $cacheKey = 'diklat_dropdown_data';
+        
+        $data = $cache->get($cacheKey);
+        
+        if ($data === null) {
+            $data = [
+                'instansi' => $this->db->table('data_instansi')->get()->getResultArray(),
+                'fakultas' => $this->db->table('data_fakultas')->get()->getResultArray(),
+                'kegiatan' => $this->db->table('kegiatan')->get()->getResultArray(),
+            ];
+            $cache->save($cacheKey, $data, $cacheMinutes * 60);
+        }
+        
+        return $data;
     }
-
-    return $builder;
 }
-public function getFiltered($filter)
-{
-    $builder = $this->db->table('data_diklat d')
-        ->select('
-            d.*,
-            i.nama AS nama_instansi,
-            f.nama AS nama_fakultas,
-            k.nama AS nama_kegiatan,
-            COUNT(p.id) AS peserta
-        ')
-        ->join('data_instansi i','i.id=d.instansi_id','left')
-        ->join('data_fakultas f','f.id=d.fakultas_id','left')
-        ->join('kegiatan k','k.id=d.kegiatan_id','left')
-        ->join('data_peserta_diklat p','p.diklat_id=d.id','left')
-        ->groupBy('d.id')
-        ->orderBy('d.id','DESC');
-
-    if (!empty($filter['instansi_id'])) {
-        $builder->where('d.instansi_id', $filter['instansi_id']);
-    }
-
-    if (!empty($filter['fakultas_id'])) {
-        $builder->where('d.fakultas_id', $filter['fakultas_id']);
-    }
-
-    if (!empty($filter['kegiatan_id'])) {
-        $builder->where('d.kegiatan_id', $filter['kegiatan_id']);
-    }
-
-    if (!empty($filter['status_diklat'])) {
-        $builder->where('d.status_diklat', $filter['status_diklat']);
-    }
-
-    return $builder;
-}
-
-
-    }
-
-

@@ -26,8 +26,8 @@ class Filters extends BaseFilters
      */
     public array $aliases = [
         'csrf' => \CodeIgniter\Filters\CSRF::class,
-    'toolbar' => \CodeIgniter\Filters\DebugToolbar::class,
-    'honeypot' => \CodeIgniter\Filters\Honeypot::class,
+        'toolbar' => \CodeIgniter\Filters\DebugToolbar::class,
+        'honeypot' => \CodeIgniter\Filters\Honeypot::class,
         'invalidchars'  => InvalidChars::class,
         'secureheaders' => SecureHeaders::class,
         'cors'          => Cors::class,
@@ -35,6 +35,8 @@ class Filters extends BaseFilters
         'pagecache'     => PageCache::class,
         'performance'   => PerformanceMetrics::class,
         'auth' => \App\Filters\AuthFilter::class,
+        'role' => \App\Filters\RoleFilter::class,
+
 
     ];
 

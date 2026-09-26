@@ -30,18 +30,27 @@ $routes->setDefaultMethod('index');
 $routes->setTranslateURIDashes(false);
 $routes->set404Override();
 $routes->setAutoRoute(false);
-
+$routes->get('admin/user/edit/(:num)', '\App\Modules\Admin\Controllers\User::edit/$1');
+$routes->post('admin/user/update/(:num)', '\App\Modules\Admin\Controllers\User::update/$1');
+$routes->get('admin/user/delete/(:num)', '\App\Modules\Admin\Controllers\User::delete/$1');;
 $routes->get('dashboard', '\App\Modules\Dashboard\Controllers\Dashboard::index');
 $routes->get('/', '\App\Modules\Auth\Controllers\Auth::login');
+
 // ===============================
 // ROOT Api
 // ===============================
 
 $routes->group('api', function($routes) {
+
     $routes->get('diklat', '\App\Modules\Diklat\Controllers\Api\DiklatApi::index');
+
     $routes->get('diklat/(:num)', '\App\Modules\Diklat\Controllers\Api\DiklatApi::show/$1');
+
     $routes->post('diklat', '\App\Modules\Diklat\Controllers\Api\DiklatApi::create');
-    $routes->post('api/diklat', '\App\Modules\Diklat\Controllers\Api\DiklatApi::create');
+
+    $routes->put('diklat/(:num)', '\App\Modules\Diklat\Controllers\Api\DiklatApi::update/$1');
+
+    $routes->delete('diklat/(:num)', '\App\Modules\Diklat\Controllers\Api\DiklatApi::delete/$1');
 
 });
 
@@ -53,7 +62,22 @@ $routes->get('api-test', 'ApiTest::index');
 // ===============================
 // DASHBOARD (MODULE)
 // ===============================
-// $routes->get('/', '\App\Modules\Dashboard\Controllers\Dashboard::index');
+
+
+
+// ===============================
+// LOGIN
+// ===============================
+
+$routes->get('user', 'User::index');
+$routes->get('user/create', 'User::create');
+$routes->post('user/store', 'User::store');
+
+$routes->group('admin', ['namespace' => 'App\Modules\Admin\Controllers'], function($routes) {
+    $routes->get('user', 'User::index');
+    $routes->get('user/create', 'User::create');
+    $routes->post('user/store', 'User::store');
+});
 
 
 
@@ -142,20 +166,6 @@ $routes->group('master', ['namespace' => 'App\Modules\Master\Controllers'], func
 
 
 
-// $routes->group('master', ['namespace' => 'App\Modules\Master\Controllers'], function($routes){
-
-//     // ===== LAPORAN =====
-//     $routes->group('laporan', function($routes){
-//         $routes->get('internal', 'Laporan::internal');
-//         $routes->get('eksternal', 'Laporan::eksternal');
-//         $routes->get('export_excel', 'Laporan::export_excel');
-//     });
-
-// });
-
-
-// $routes->group('diklat', ['namespace' => 'App\Modules\Diklat\Controllers'], function ($routes) {
-//     $routes->get('/', 'Diklat::index');
 
 ///Diklat
 // ================= DIKLAT =================
@@ -175,28 +185,104 @@ $routes->group('diklat',['namespace'=>'App\Modules\Diklat\Controllers'],function
 
 
 
-
-
-
-
-
-// ===============================
-// DIKLAT
-// ==============================
-// $routes->get('/diklat', '\App\Modules\Diklat\Controllers\Diklat::index');
-// $routes->get('/diklat/create', '\App\Modules\Diklat\Controllers\Diklat::create');
-// $routes->post('/diklat/store', '\App\Modules\Diklat\Controllers\Diklat::store');
-// $routes->get('/diklat/edit/(:num)', '\App\Modules\Diklat\Controllers\Diklat::edit/$1');
-// $routes->post('/diklat/update/(:num)', '\App\Modules\Diklat\Controllers\Diklat::update/$1');
-// $routes->get('/diklat/delete/(:num)', '\App\Modules\Diklat\Controllers\Diklat::delete/$1');
-
-// ===============================
-// AUTH
-// ===============================
-$routes->group('', ['namespace' => 'App\Modules\Auth\Controllers'], function($routes){
+$routes->group('', ['namespace' => 'App\Modules\Auth\Controllers'], function($routes) {
     $routes->get('login', 'Auth::login');
+    $routes->post('login', 'Auth::processLogin');
     $routes->get('register', 'Auth::register');
-    $routes->post('process-login', 'Auth::processLogin');
-    $routes->post('process-register', 'Auth::processRegister');
+    $routes->post('register', 'Auth::processRegister');
     $routes->get('logout', 'Auth::logout');
+});
+
+// $routes->group('admin', function($routes){
+//     $routes->get('user', 'Admin\User::index');
+//     $routes->get('user/create', 'Admin\User::create');
+//     $routes->post('user/store', 'Admin\User::store');
+//     $routes->get('user/delete/(:num)', 'Admin\User::delete/$1');
+// });
+
+$routes->get('admin/dashboard', '\App\Modules\Admin\Controllers\Dashboard::index');
+$routes->get('user/dashboard', '\App\Modules\User\Controllers\Dashboard::index');
+
+
+
+
+$routes->group('admin', ['filter' => 'role:admin'], function($routes){
+
+    $routes->get('dashboard', 'Admin\Dashboard::index');
+
+    $routes->group('diklat', function($routes){
+        $routes->get('/', 'Diklat::index');
+        $routes->post('store', 'Diklat::store');
+        $routes->get('delete/(:num)', 'Diklat::delete/$1');
+        $routes->get('proses/(:num)', 'Diklat::proses/$1');
+        $routes->post('simpanProses/(:num)', 'Diklat::simpanProses/$1');
+    });
+
+    // MASTER
+    $routes->group('master', ['namespace'=>'App\Modules\Master\Controllers'], function($routes){
+
+        $routes->get('jenis-instansi', 'JenisInstansi::index');
+        $routes->add('jenis-instansi/create', 'JenisInstansi::create');
+        $routes->post('jenis-instansi/store', 'JenisInstansi::store');
+        $routes->add('jenis-instansi/edit/(:num)', 'JenisInstansi::edit/$1');
+        $routes->post('jenis-instansi/update/(:num)', 'JenisInstansi::update/$1');
+        $routes->get('jenis-instansi/delete/(:num)', 'JenisInstansi::delete/$1');
+
+        $routes->get('data-instansi', 'DataInstansi::index');
+        $routes->add('data-instansi/create', 'DataInstansi::create');
+        $routes->post('data-instansi/store', 'DataInstansi::store');
+        $routes->add('data-instansi/edit/(:num)', 'DataInstansi::edit/$1');
+        $routes->post('data-instansi/update/(:num)', 'DataInstansi::update/$1');
+        $routes->get('data-instansi/delete/(:num)', 'DataInstansi::delete/$1');
+    });
+
+    // USER MANAGEMENT
+    $routes->group('user', ['namespace'=>'App\Modules\Admin\Controllers'], function($routes){
+        $routes->get('/', 'User::index');
+        $routes->get('create', 'User::create');
+        $routes->post('store', 'User::store');
+        $routes->get('delete/(:num)', 'User::delete/$1');
+    });
+
+});
+
+$routes->group('', ['filter' => 'role:user'], function($routes){
+
+    $routes->get('user/dashboard', '\App\Modules\User\Controllers\Dashboard::index');
+
+    $routes->group('master', ['namespace'=>'App\Modules\Master\Controllers'], function($routes){
+        $routes->get('jenis-instansi', 'JenisInstansi::index');
+        $routes->get('data-instansi', 'DataInstansi::index');
+    });
+
+    $routes->group('diklat', ['namespace'=>'App\Modules\Diklat\Controllers'], function($routes){
+        $routes->get('/', 'Diklat::index');
+        $routes->get('cetak/(:num)', 'Diklat::cetak/$1');
+    });
+
+});
+
+
+///////// PROFIL ///////////
+
+$routes->get('profil', function () {
+    if (session()->get('role') == 'admin') {
+        return redirect()->to('/admin/profil');
+    }
+
+    if (session()->get('role') == 'user') {
+        return redirect()->to('/user/profil');
+    }
+
+    return redirect()->to('/login');
+});
+
+$routes->group('admin', ['namespace' => 'App\Modules\Admin\Controllers'], function($routes){
+    $routes->get('profil', 'Profil::index');
+    $routes->post('profil/update', 'Profil::update');
+});
+
+$routes->group('user', ['namespace' => 'App\Modules\User\Controllers'], function($routes){
+    $routes->get('profil', 'Profil::index');
+    $routes->post('profil/update', 'Profil::update');
 });

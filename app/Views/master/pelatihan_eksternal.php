@@ -6,6 +6,7 @@
     <!-- HEADER -->
     <div class="card-header bg-white d-flex justify-content-between align-items-center">
         <h6 class="mb-0 fw-bold"><?= $title ?></h6>
+        <?php if (session()->get('role') === 'admin'): ?>
         <button class="btn btn-primary btn-sm"
                 id="btnTambah"
                 data-action="<?= base_url('master/pelatihan_eksternal/store') ?>"
@@ -13,6 +14,7 @@
                 data-bs-target="#modalForm">
             <i class="bi bi-plus-lg"></i> Tambah Baru
         </button>
+        <?php endif; ?>
     </div>
         <div class="card-body pb-0">
     <form method="get">
@@ -54,7 +56,9 @@
             <thead class="table-light small text-uppercase">
             <tr>
                 <th width="50">No</th>
-                <th width="80">Aksi</th>
+                <?php if (session()->get('role') === 'admin'): ?>
+                <th width="50">Aksi</th>
+                <?php endif; ?>
                 <th>Kegiatan Pelatihan</th>
                 <th>Peserta</th>
                 <th>Jumlah</th>
@@ -71,6 +75,7 @@
             <?php $no=1; foreach($data as $row): ?>
                 <tr>
                     <td><?= $no++ ?></td>
+                    <?php if (session()->get('role') === 'admin'): ?>
                     <td>
                         <div class="dropdown">
                             <button class="btn btn-sm btn-outline-primary dropdown-toggle" data-bs-toggle="dropdown">
@@ -106,6 +111,7 @@
                             </ul>
                         </div>
                     </td>
+                    <?php endif; ?>
                     <td><?= esc($row['kegiatan']) ?></td>
                     <td><?= esc($row['peserta']) ?></td>
                     <td><?= $row['jumlah'] ?></td>

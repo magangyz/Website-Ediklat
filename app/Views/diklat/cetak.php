@@ -104,6 +104,10 @@
         margin-top: 40px;
         width: 100%;
     }
+
+    .signature img{
+    margin-bottom:10px;
+    }
 </style>
 </head>
 <body>
@@ -212,9 +216,22 @@ $total += $subtotal;
 <tr>
 <td width="60%"></td>
 <td class="text-center">
-    Klaten, <?= date('d-m-Y') ?><br><br><br><br>
+
+    Klaten, <?= date('d-m-Y') ?><br><br>
+
+    <?php if(!empty($diklat['ttd'])): ?>
+    <?php
+    $pathTtd = FCPATH.'uploads/ttd/'.$diklat['ttd'];
+    $ttdBase64 = 'data:image/png;base64,'.base64_encode(file_get_contents($pathTtd));
+    ?>
+    <img src="<?= $ttdBase64 ?>" width="120"><br>
+    <?php else: ?>
+    <br><br><br>
+    <?php endif; ?>
+
     <b><?= esc($diklat['ketua'] ?? '________________') ?></b><br>
     Ketua Pelaksana
+
 </td>
 </tr>
 </table>

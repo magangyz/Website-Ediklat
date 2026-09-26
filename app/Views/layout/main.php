@@ -1,5 +1,11 @@
 <?php
 $appInfo = new \Config\AppInfo();
+$role = session()->get('role');
+
+use App\Modules\Auth\Models\UserModel;
+
+$userModel = new UserModel();
+$user = $userModel->find(session()->get('user_id'));
 ?>
 
 <!doctype html>
@@ -120,19 +126,74 @@ $appInfo = new \Config\AppInfo();
                         <li><a class="dropdown-item" href="<?= base_url('master/laporan_eksternal') ?>">Laporan Eksternal</a></li>
                     </ul>
                 </li>
+               
+                <?php if ($role === 'admin'): ?>
+                <li class="nav-item dropdown">
+                    <a class="nav-link dropdown-toggle" href="#" role="button"
+                    data-bs-toggle="dropdown">
+                        <i class="bi bi-people"></i> Admin
+                    </a>
+                    <ul class="dropdown-menu">
+                        <li>
+                            <a class="dropdown-item" href="<?= base_url('admin/user') ?>">
+                                <i class="bi bi-list"></i> Manajemen User
+                            </a>
+                        </li>
+                        <li>
+                            <a class="dropdown-item" href="<?= base_url('admin/user/create') ?>">
+                                <i class="bi bi-person-plus"></i> Add User
+                            </a>
+                        </li>
+                    </ul>
+                </li>
+                <?php endif; ?>
 
-            </ul>
+             </ul>
+               
+                
         </div>
+                        <ul class="navbar-nav ms-auto">
+
                             <?php if(session()->get('logged_in')): ?>
-                        <li class="nav-item">
-                            <a class="nav-link" href="<?= base_url('logout') ?>">Logout</a>
-                        </li>
-                    <?php else: ?>
-                        <li class="nav-item">
-                            <a class="nav-link" href="<?= base_url('login') ?>">Login</a>
-                        </li>
-                    <?php endif; ?>
+
+                                <li class="nav-item dropdown">
+                                    <a class="nav-link dropdown-toggle d-flex align-items-center"
+                                    href="#" role="button"
+                                    data-bs-toggle="dropdown">
+
+                                        <?php if (!empty($user) && !empty($user['foto'])): ?>
+                                        <img src="<?= base_url('uploads/foto/'.$user['foto']) ?>"
+                                            class="rounded-circle"
+                                            width="35"
+                                            height="35"
+                                            style="object-fit:cover;">
+                                        <?php else: ?>
+                                        <img src="<?= base_url('uploads/foto/default.png') ?>"
+                                            class="rounded-circle"
+                                            width="35"
+                                            height="35">
+                                        <?php endif; ?>
+
+                                        <?= session()->get('username') ?>
+                                    </a>
+
+                                    <ul class="dropdown-menu dropdown-menu-end">
+                                        <li><a class="dropdown-item" href="<?= base_url('profil') ?>">Profil</a></li>
+                                        <li><a class="dropdown-item text-danger" href="<?= base_url('logout') ?>">Logout</a></li>
+                                    </ul>
+                                </li>
+
+                            <?php else: ?>
+
+                                <li class="nav-item">
+                                    <a class="nav-link" href="<?= base_url('login') ?>">Login</a>
+                                </li>
+
+                            <?php endif; ?>
+
+                            </ul>
     </div>
+    
 </nav>
 
 <!-- CONTENT -->
@@ -156,4 +217,7 @@ $appInfo = new \Config\AppInfo();
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
 </body>
+<pre>
+
+</pre>
 </html>

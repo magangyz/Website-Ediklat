@@ -16,7 +16,7 @@
 ```
 <div class="card-body">
 
-<form method="post" action="<?= base_url('diklat/simpanProses/'.$row['id']) ?>">
+<form method="post" action="<?= base_url('diklat/simpanProses/'.$row['id']) ?>" enctype="multipart/form-data">
 <?= csrf_field() ?>
 
 <div class="text-end mb-3">
@@ -72,6 +72,16 @@
             <option value="selesai" <?= $row['status_diklat']=='selesai'?'selected':'' ?>>Selesai</option>
         </select>
     </div>
+    <div class="col-md-4">
+        <label class="form-label fw-semibold">Upload Tanda Tangan</label>
+        <input type="file" name="ttd" class="form-control form-control-sm">
+    </div>
+    <?php if(!empty($row['ttd'])): ?>
+    <div class="col-md-4">
+        <label class="form-label fw-semibold">TTD Saat Ini</label><br>
+        <img src="<?= base_url('uploads/ttd/'.$row['ttd']) ?>" width="120">
+    </div>
+    <?php endif; ?>
 </div>
 
 <hr>

@@ -55,10 +55,9 @@
 
 <div class="card login-card p-4">
     <div class="text-center mb-4">
-    <img src="<?= base_url('assets/images/logo.png') ?>" 
-         alt="Logo RS" 
-         style="width:120px;">
-    <h5 class="mt-3"></h5>
+     <img src="<?= base_url('assets/logo.png') ?>" 
+        alt="logo"
+        style="width:120px;">
     </div>
 
 
@@ -75,20 +74,23 @@
         </div>
     <?php endif; ?>
 
-    <form method="post" action="<?= base_url('process-login') ?>">
+    <form method="post" action="<?= base_url('login') ?>">
 
-        <div class="mb-3 input-group">
-            <span class="input-group-text">
-                <i class="fa fa-envelope"></i>
-            </span>
-            <input type="email" name="email" class="form-control" placeholder="Email" required>
+        <div class="mb-3">
+            <label>Username</label>
+            <input type="text"
+                name="username"
+                class="form-control"
+                required>
         </div>
 
-        <div class="mb-3 input-group">
-            <span class="input-group-text">
-                <i class="fa fa-lock"></i>
-            </span>
-            <input type="password" name="password" class="form-control" placeholder="Password" required>
+       
+        <div class="mb-3">
+            <label>Password</label>
+            <input type="password"
+                name="password"
+                class="form-control"
+                required>
         </div>
 
         <div class="d-flex justify-content-between align-items-center mt-4">

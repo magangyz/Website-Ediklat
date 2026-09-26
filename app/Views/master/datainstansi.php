@@ -4,6 +4,7 @@
 <div class="card shadow-sm">
 <div class="card-header bg-white d-flex justify-content-between align-items-center">
     <h6 class="fw-bold mb-0">Data Instansi</h6>
+   <?php if (session()->get('role') === 'admin'): ?>
     <button class="btn btn-primary btn-sm"
             id="btnTambah"
             data-action="<?= base_url($url.'/store') ?>"
@@ -11,6 +12,7 @@
             data-bs-target="#modalForm">
         <i class="bi bi-plus-lg"></i> Tambah Baru
     </button>
+    <?php endif; ?>
 </div>
 
 <div class="table-responsive">
@@ -55,7 +57,9 @@
 
 <tr>
     <th width="40">No</th>
+   <?php if (session()->get('role') === 'admin'): ?>
     <th width="50">Aksi</th>
+    <?php endif; ?>
     <th width="80">Kode</th>
     <th width="180">Nama Instansi</th>
     <th>Jenis</th>
@@ -66,6 +70,7 @@
 <?php $no=1; foreach($data as $row): ?>
 <tr>
 <td><?= $no++ ?></td>
+<?php if (session()->get('role') === 'admin'): ?>
 <td>
     <div class="dropdown">
         <button class="btn btn-sm btn-outline-primary dropdown-toggle" data-bs-toggle="dropdown">
@@ -96,6 +101,7 @@
         </ul>
     </div>
 </td>
+<?php endif; ?>
 <td><?= esc($row['kode']) ?></td>
 <td><?= esc($row['nama']) ?></td>
 <td><?= esc($row['jenis_nama']) ?></td>

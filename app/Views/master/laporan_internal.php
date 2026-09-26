@@ -39,7 +39,10 @@
                 class="btn btn-sm btn-success">
                 Cetak Excel
                 </a>
-
+                <!-- <a href="<?= base_url('master/laporan/export_internal_pdf?' . $_SERVER['QUERY_STRING']) ?>"
+                class="btn btn-sm btn-danger">
+                Cetak PDF
+                </a> -->
 
             </div>
 

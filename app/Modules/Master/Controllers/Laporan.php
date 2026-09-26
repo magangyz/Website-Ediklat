@@ -6,6 +6,7 @@ use App\Controllers\BaseController;
 use App\Modules\Master\Models\PelatihanModel;
 use PhpOffice\PhpSpreadsheet\Spreadsheet;
 use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
+use Dompdf\Dompdf;
 
 class Laporan extends BaseController
 {
@@ -38,6 +39,29 @@ class Laporan extends BaseController
                 ->orderBy('tahun','DESC')
                 ->findAll()
         ]);
+    }
+    public function export_internal_pdf()
+    {
+        $tahun = $this->request->getGet('tahun');
+
+        $query = $this->model->where('jenis', 'internal');
+
+        if ($tahun) {
+            $query->where('YEAR(waktu)', $tahun);
+        }
+
+        $data = $query->orderBy('waktu','DESC')->findAll();
+
+        $html = view('master/laporan_pdf', [
+            'data' => $data
+        ]);
+
+        $dompdf = new Dompdf();
+        $dompdf->loadHtml($html);
+        $dompdf->setPaper('A4', 'landscape');
+        $dompdf->render();
+
+        $dompdf->stream("laporan_internal.pdf", ["Attachment" => false]);
     }
 
     public function eksternal()
@@ -196,5 +220,6 @@ public function export_excel()
     $writer->save('php://output');
     exit;
 }
+
 
 }

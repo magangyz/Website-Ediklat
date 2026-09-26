@@ -12,8 +12,7 @@ class UserModel extends Model
     protected $allowedFields = [
         'username',
         'email',
-        'password'
+        'password',
+        'role'
     ];
-
-    protected $useTimestamps = false;
 }

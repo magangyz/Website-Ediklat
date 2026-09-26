@@ -1,4 +1,4 @@
-<form method="post" action="<?= site_url('diklat/proses') ?>">
+<form method="post" action="<?= site_url('diklat/simpanProses/'.$row['id']) ?>">
 
 <table class="table table-bordered" id="tabelPeserta">
     <thead class="table-light">
@@ -98,4 +98,49 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
 });
+</script>
+
+<script src="https://cdn.jsdelivr.net/npm/signature_pad@4.0.0/dist/signature_pad.umd.min.js"></script>
+
+
+
+<label><b>Tanda Tangan Digital</b></label><br>
+
+<canvas id="signature-pad" 
+style="border:1px solid #000;width:350px;height:150px;"></canvas>
+
+<br><br>
+
+<button type="button" onclick="clearTtd()" class="btn btn-warning btn-sm">
+Hapus TTD
+</button>
+
+<input type="hidden" name="ttd_digital" id="ttd_digital">
+
+
+<script src="https://cdn.jsdelivr.net/npm/signature_pad@4.0.0/dist/signature_pad.umd.min.js"></script>
+
+<script>
+
+const canvas = document.getElementById('signature-pad');
+const signaturePad = new SignaturePad(canvas);
+
+function clearTtd(){
+    signaturePad.clear();
+}
+
+document.querySelector("form").addEventListener("submit", function () {
+
+    if (!signaturePad.isEmpty()) {
+
+        let data = signaturePad.toDataURL("image/png");
+
+        document.getElementById("ttd_digital").value = data;
+
+    }
+
+});
+
+</script>
+
 </script>

@@ -6,13 +6,8 @@ use App\Controllers\BaseController;
 use Dompdf\Dompdf;
 use Dompdf\Options;
 use App\Modules\Diklat\Models\DiklatModel;
-use App\Modules\Diklat\Models\PesertaModel;
-use App\Modules\Diklat\Models\BiayaModel;
-
 use App\Modules\Master\Models\DataInstansiModel;
 use App\Modules\Master\Models\FakultasModel;
-use App\Modules\Master\Models\KegiatanModel;
-
 use App\Modules\Diklat\Models\PesertaDiklatModel;
 use App\Modules\Diklat\Models\BiayaDiklatModel;
 
@@ -25,41 +20,68 @@ class Diklat extends BaseController
         $this->diklat = new DiklatModel();
     }
 
-    
+    /**
+     * Optimized index - menggunakan caching untuk data master
+     */
+    public function index()
+    {
+        $limit = $this->request->getGet('limit') ?? 10;
+        
+        // Batasi max limit untuk mencegah memory issue
+        if ($limit === 'all' || $limit > 100) {
+            $limit = 100;
+        }
 
-   public function index()
-{
-    $limit = $this->request->getGet('limit') ?? 10;
+        $filter = [
+            'instansi_id'   => $this->request->getGet('instansi_id'),
+            'fakultas_id'   => $this->request->getGet('fakultas_id'),
+            'kegiatan_id' => $this->request->getGet('kegiatan_id'),
+            'status_diklat' => $this->request->getGet('status_diklat'),
+        ];
 
-    $filter = [
-        'instansi_id'   => $this->request->getGet('instansi_id'),
-        'fakultas_id'   => $this->request->getGet('fakultas_id'),
-        'kegiatan_id'   => $this->request->getGet('kegiatan_id'),
-        'status_diklat' => $this->request->getGet('status_diklat'),
-    ];
+        // Gunakan caching untuk data master (instansi, fakultas, kegiatan)
+        $cache = \Config\Services::cache();
+        $cacheKey = 'diklat_master_data';
+        $masterData = $cache->get($cacheKey);
+        
+        if ($masterData === null) {
+            $masterData = [
+                'instansi' => (new DataInstansiModel())->findAll(),
+                'fakultas' => (new FakultasModel())->findAll(),
+                'kegiatan' => $this->getkegiatan(),
+            ];
+            $cache->save($cacheKey, $masterData, 300); // 5 menit
+        }
 
-    $builder = $this->diklat->getFiltered($filter);
+        // Get data dengan limit
+        $data = $this->diklat->getFiltered($filter, $limit);
 
-    if ($limit === 'all') {
-        $data = $builder->get()->getResultArray();
-        $pager = null;
-    } else {
-        $limit = (int) $limit;
-        $data = $builder->get($limit)->getResultArray();
-        $pager = null;
+        return view('diklat/index', [
+            'data'     => $data,
+            'pager'    => null,
+            'instansi' => $masterData['instansi'],
+            'fakultas' => $masterData['fakultas'],
+            'kegiatan' => $masterData['kegiatan'],
+            'filter'   => $filter,
+            'limit'    => $limit
+        ]);
+
+
+        
     }
-
-    return view('diklat/index', [
-        'data'     => $data,
-        'pager'    => $pager,
-        'instansi' => (new DataInstansiModel())->findAll(),
-        'fakultas' => (new FakultasModel())->findAll(),
-        'kegiatan' => (new KegiatanModel())->findAll(),
-        'filter'   => $filter,
-        'limit'    => $limit
-    ]);
-}
-
+    private function onlyAdmin()
+    {
+        if (session()->get('role') !== 'admin') {
+            return redirect()->to('/user/dashboard');
+        }
+    }
+    /**
+     * Get activities from database - uses table 'kegiatan'
+     */
+    private function getkegiatan()
+    {
+        return \Config\Database::connect()->table('kegiatan')->get()->getResultArray();
+    }
 
     public function store()
     {
@@ -69,12 +91,13 @@ class Diklat extends BaseController
         $fakultas_id = $this->request->getPost('fakultas_id');
         $kegiatan_id = $this->request->getPost('kegiatan_id');
 
-        $instansi = (new \App\Modules\Master\Models\DataInstansiModel())->find($instansi_id);
+        $instansi = (new DataInstansiModel())->find($instansi_id);
         $jenis = $instansi['tipe'] ?? 'eksternal';
 
-        $kegiatan = (new \App\Modules\Master\Models\KegiatanModel())->find($kegiatan_id);
+        // Validate activities exists
+        $kegiatan = \Config\Database::connect()->table('kegiatan')->where('id', $kegiatan_id)->get()->getRowArray();
         if (!$kegiatan) {
-            return redirect()->back()->with('error', 'Kegiatan tidak valid');
+            return redirect()->back()->with('error', 'kegiatan tidak valid');
         }
 
         $this->diklat->insert([
@@ -82,7 +105,7 @@ class Diklat extends BaseController
             'instansi_id'   => $instansi_id,
             'jenis'         => $jenis,
             'fakultas_id'   => $fakultas_id,
-            'kegiatan_id'   => $kegiatan_id,
+            'kegiatan_id' => $kegiatan_id,
             'tgl_mulai'     => $this->request->getPost('tgl_mulai'),
             'tgl_akhir'     => $this->request->getPost('tgl_akhir'),
             'no_telp'       => $this->request->getPost('no_telp'),
@@ -93,48 +116,81 @@ class Diklat extends BaseController
             'status_bayar'  => 'belum',
             'total_biaya'   => 0
         ]);
+        
+            if (session()->get('role') !== 'admin') {
+                return redirect()->to('/user/dashboard');
+            }
+        // Clear cache setelah insert
+        \Config\Services::cache()->delete('diklat_master_data');
 
         return redirect()->to(base_url('diklat'))->with('success','Diklat berhasil ditambahkan');
     }
 
-
-
    public function proses($id)
     {
-    $row = $this->diklat->getDetail($id);
+        $row = $this->diklat->getDetail($id);
 
-    if (!$row) {
-        throw new \CodeIgniter\Exceptions\PageNotFoundException();
+        if (!$row) {
+            throw new \CodeIgniter\Exceptions\PageNotFoundException();
+        }
+
+        $peserta = (new PesertaDiklatModel())
+            ->where('diklat_id', $id)
+            ->findAll();
+
+        $biaya = (new BiayaDiklatModel())
+            ->where('diklat_id', $id)
+            ->findAll();
+
+        return view('diklat/proses', compact('row','peserta','biaya'));
+        
+        if (session()->get('role') !== 'admin') {
+            return redirect()->to('/user/dashboard');
+        }
+        
     }
-
-    $peserta = (new PesertaDiklatModel())
-        ->where('diklat_id', $id)
-        ->findAll();
-
-    $biaya = (new BiayaDiklatModel())
-        ->where('diklat_id', $id)
-        ->findAll();
-
-    return view('diklat/proses', compact('row','peserta','biaya'));
-    }
-
 
    public function simpanProses($id)
 {
-    
     $db = \Config\Database::connect();
     $db->transStart();
 
+    /* ================= UPLOAD TTD ================= */
+    $ttdDigital = $this->request->getPost('ttd_digital');
+    $namaTtd = null;
+
+    if($ttdDigital){
+
+        $image = str_replace('data:image/png;base64,', '', $ttdDigital);
+        $image = str_replace(' ', '+', $image);
+
+        $namaTtd = 'ttd_'.time().'.png';
+
+        file_put_contents(
+            FCPATH.'uploads/ttd/'.$namaTtd,
+            base64_decode($image)
+        );
+
+    }
+        
+
     /* ================= UPDATE HEADER DIKLAT ================= */
-    $db->table('data_diklat')->where('id', $id)->update([
-        'ketua'         => $this->request->getPost('ketua'),
-        'tgl_mulai'     => $this->request->getPost('tgl_mulai'),
-        'tgl_akhir'     => $this->request->getPost('tgl_akhir'),
-        'ruangan'       => $this->request->getPost('ruangan'),
-        'no_telp'       => $this->request->getPost('no_telp'),
-        'keterangan'    => $this->request->getPost('keterangan'),
-        'status_diklat' => $this->request->getPost('status_diklat'),
-    ]);
+    $update = [
+    'ketua' => $this->request->getPost('ketua'),
+    'tgl_mulai' => $this->request->getPost('tgl_mulai'),
+    'tgl_akhir' => $this->request->getPost('tgl_akhir'),
+    'ruangan' => $this->request->getPost('ruangan'),
+    'no_telp' => $this->request->getPost('no_telp'),
+    'keterangan' => $this->request->getPost('keterangan'),
+    'status_diklat' => $this->request->getPost('status_diklat'),
+    'ttd' => $namaTtd
+    ];
+
+    if ($namaTtd) {
+        $update['ttd'] = $namaTtd;
+    }
+
+    $db->table('data_diklat')->where('id', $id)->update($update);
 
     /* ================= RESET DATA DETAIL ================= */
     $db->table('data_peserta_diklat')->where('diklat_id', $id)->delete();
@@ -163,12 +219,15 @@ class Diklat extends BaseController
 
     if (is_array($tgl)) {
         foreach ($tgl as $i => $t) {
+
             if (trim($t) != '') {
+
                 $orang   = (int)($this->request->getPost('orang')[$i] ?? 0);
                 $qty     = (int)($this->request->getPost('qty')[$i] ?? 0);
                 $nominal = (int)($this->request->getPost('nominal')[$i] ?? 0);
 
                 $sub = $orang * $qty * $nominal;
+
                 $total += $sub;
 
                 $db->table('data_biaya_diklat')->insert([
@@ -185,9 +244,10 @@ class Diklat extends BaseController
     }
 
     /* ================= UPDATE TOTAL ================= */
+
     $db->table('data_diklat')->where('id', $id)->update([
         'total_biaya'  => $total,
-        'status_bayar'=> ($total > 0 ? 'lunas' : 'belum')
+        'status_bayar' => ($total > 0 ? 'lunas' : 'belum')
     ]);
 
     $db->transComplete();
@@ -196,7 +256,8 @@ class Diklat extends BaseController
         return redirect()->back()->with('error','Gagal menyimpan data');
     }
 
-    /* ================= CETAK ATAU SIMPAN ================= */
+    /* ================= CETAK ================= */
+
     if ($this->request->getPost('aksi') == 'cetak') {
         return redirect()->to(base_url('diklat/cetak/'.$id));
     }
@@ -204,50 +265,45 @@ class Diklat extends BaseController
     return redirect()->to(base_url('diklat'))->with('success','Data berhasil disimpan');
 }
 
-
-  
-
     public function cetak($id)
-{
-    $diklat  = $this->diklat->getDetail($id);
+    {
+        $diklat  = $this->diklat->getDetail($id);
 
-    if (!$diklat) {
-        throw new \CodeIgniter\Exceptions\PageNotFoundException('Data tidak ditemukan');
+        if (!$diklat) {
+            throw new \CodeIgniter\Exceptions\PageNotFoundException('Data tidak ditemukan');
+        }
+
+        $peserta = (new PesertaDiklatModel())
+            ->where('diklat_id', $id)
+            ->findAll();
+
+        $biaya = (new BiayaDiklatModel())
+            ->where('diklat_id', $id)
+            ->findAll();
+
+        $html = view('diklat/cetak', [
+            'diklat'  => $diklat,
+            'peserta' => $peserta,
+            'biaya'   => $biaya
+        ]);
+
+        $options = new Options();
+        $options->set('isRemoteEnabled', true);
+        $options->set('isHtml5ParserEnabled', true);
+        $options->set('defaultFont', 'Helvetica');
+
+        $pdf = new Dompdf($options);
+        $pdf->loadHtml($html);
+        $pdf->setPaper('A4', 'portrait');
+        $pdf->render();
+
+        $pdf->stream(
+            'diklat-'.$diklat['no_diklat'].'.pdf',
+            ['Attachment' => false]
+        );
+
+        exit;
     }
-
-    $peserta = (new PesertaDiklatModel())
-        ->where('diklat_id', $id)
-        ->findAll();
-
-    $biaya = (new BiayaDiklatModel())
-        ->where('diklat_id', $id)
-        ->findAll();
-
-    $html = view('diklat/cetak', [
-        'diklat'  => $diklat,
-        'peserta' => $peserta,
-        'biaya'   => $biaya
-    ]);
-
-    $options = new Options();
-    $options->set('isRemoteEnabled', true);
-    $options->set('isHtml5ParserEnabled', true);
-    $options->set('defaultFont', 'Helvetica');
-
-    $pdf = new Dompdf($options);
-    $pdf->loadHtml($html);
-    $pdf->setPaper('A4', 'portrait');
-    $pdf->render();
-
-    $pdf->stream(
-        'diklat-'.$diklat['no_diklat'].'.pdf',
-        ['Attachment' => false]
-    );
-
-    exit;
-}
-
-
 
     public function delete($id)
     {
@@ -259,9 +315,14 @@ class Diklat extends BaseController
         $db->table('data_diklat')->where('id',$id)->delete();
 
         $db->transComplete();
+        
+        
+        if (session()->get('role') !== 'admin') {
+            return redirect()->to('/user/dashboard');
+        }
+        // Clear cache setelah delete
+        \Config\Services::cache()->delete('diklat_master_data');
 
         return redirect()->to(base_url('diklat'))->with('success','Data berhasil dihapus');
     }
-
-    
 }

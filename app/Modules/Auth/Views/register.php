@@ -42,9 +42,9 @@
 
 <div class="card register-card p-4">
     <div class="text-center mb-4">
-    <img src="<?= base_url('assets/images/logo.png') ?>" 
-         alt="Logo" 
-         style="width:120px;">
+     <img src="<?= base_url('assets/logo.png') ?>" 
+        alt="logo"
+        style="width:120px;">
     <h5 class="mt-3"></h5>
     </div>
 
@@ -54,7 +54,7 @@
         <small>Buat akun baru</small>
     </div>
 
-    <form method="post" action="<?= base_url('process-register') ?>">
+    <form method="post" action="<?= base_url('register') ?>">
 
         <div class="mb-3 input-group">
             <span class="input-group-text">
